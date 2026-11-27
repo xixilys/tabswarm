@@ -329,7 +329,8 @@ export const chatgpt = {
     const slider = page.locator('[role="slider"]').first();
     if (!(await slider.isVisible().catch(() => false))) return null;
     const read = () => page.evaluate(() => {
-      const el = document.querySelector('[data-effort-only="true"]');
+      // seen 2026-11: the top level ("Pro") is labelled by a data-maximum="true" span instead
+      const el = document.querySelector('[data-effort-only="true"]') || document.querySelector('[data-effort-only][data-maximum="true"]');
       return { label: (el?.innerText || '').trim(), pro: el?.getAttribute('data-pro') === 'true' };
     });
     const min = Number(await slider.getAttribute('aria-valuemin')) || 0;

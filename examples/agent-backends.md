@@ -3,7 +3,7 @@
 Local agent backends are argv templates in `config.json` → `agents.commands`, enabled by listing
 them in `agents.backends`. Variables: `{prompt} {cwd} {dir} {last} {model} {effort} {account}
 {chat}`. A `{x?}` element is optional: when `x` is empty it is dropped together with the flag
-before it.
+before it. `{x?fallback}` uses `fallback` when `x` is empty (`"--model", "{model?sonnet}"`).
 
 ```json
 {

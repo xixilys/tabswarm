@@ -2,7 +2,7 @@
 // "<pool>:<model>[:<effort>]" provider:
 //   web:gemini[:MODEL[:EFFORT]]    Gemini web in the hub's browser (MODEL = a picker label such as
 //   gemini[:MODEL[:EFFORT]]        "Neon" or "Carbon"; EFFORT = thinking level low|medium|high)
-//   web:chatgpt[:MODEL[:EFFORT]]   ChatGPT web (MODEL = picker label, EFFORT = reasoning level label)
+//   web:chatgpt[:MODEL[:EFFORT]]   ChatGPT web (MODEL = picker label or slider level such as "Extra High")
 //   gateway[:MODEL[:EFFORT]]       an HTTP model gateway (Anthropic- or OpenAI-compatible, see gateway.js)
 //   gateway@NAME:MODEL             a named gateway from config.gateways
 //   agent:BACKEND[:MODEL[:EFFORT]] a local agent backend from config.agents.commands (claude, codex, ...)

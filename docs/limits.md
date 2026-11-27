@@ -59,8 +59,10 @@ Tune it in `config.json`:
   "Deeper analysis" all match) and `--effort low|medium|high` (the "Thinking level" submenu).
   Both are read back from the page before the prompt is sent. If the readback does not match,
   the task stops with `BLOCKED: model-unavailable`.
-* ChatGPT web: `--model "<picker label>"`; `--effort` picks a reasoning level on the slider. Pro
-  levels need `--allow-pro`.
+* ChatGPT web: `--model "<picker label>"` picks a model row ("GPT-6.2", ...). The reasoning
+  levels of the main model are on a slider; pass the level as the model: `--model Instant`,
+  `Medium`, `High`, `Extra High` or `Pro` (Pro needs `--allow-pro`). Seen 2026-11: `--model 6
+  --effort "Extra High"` is refused, so use `--model "Extra High"` instead.
 * Choosing a model or level in the picker changes the **account's** current setting for new chats
   too, just as clicking it by hand would.
 * Seen live (2026-11): after a thinking-level change, the picker label reads "<model> <level>".

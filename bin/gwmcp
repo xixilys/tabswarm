@@ -77,6 +77,7 @@ case "${1:-status}" in
     mkdir -p "$HOME/.local/bin"
     chmod +x "$REPO/bin/webhub.mjs" "$REPO/bin/gemweb.mjs" "$REPO/bin/gwmcp"
     ln -sf "$REPO/bin/webhub.mjs" "$HOME/.local/bin/webhub"
+    ln -sf "$REPO/bin/webhub.mjs" "$HOME/.local/bin/tabswarm"
     rm -f "$HOME/.local/bin/gemweb" "$HOME/.local/bin/gwmcp"
     stop all; start all
     sleep 2; "$0" status ;;

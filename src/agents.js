@@ -62,9 +62,10 @@ function head(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n) +
 export function fillArgv(tpl, vars) {
   const out = [];
   for (const x of tpl) {
-    const opt = /^\{(\w+)\?\}$/.exec(String(x));
+    // {name?} drops itself and the flag before it when empty; {name?fallback} uses the fallback
+    const opt = /^\{(\w+)\?([^{}]*)\}$/.exec(String(x));
     if (opt) {
-      const v = vars[opt[1]];
+      const v = vars[opt[1]] || opt[2];
       if (v === undefined || v === null || v === '') { if (out.length && /^-/.test(out[out.length - 1])) out.pop(); continue; }
       out.push(String(v)); continue;
     }

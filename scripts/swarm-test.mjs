@@ -85,6 +85,7 @@ let threw = false; try { T('nope'); } catch (e) { threw = /unknown target/.test(
 check('--model/--effort override the spec', targetFrom({ backend: 'web:gemini:Neon', model: 'Carbon', effort: 'low' }, cfg).model === 'Carbon');
 check('fillArgv drops an empty optional flag pair', JSON.stringify(fillArgv(['x', '--model', '{model?}', '-p', '{prompt}'], { prompt: 'hi', model: '' })) === '["x","-p","hi"]');
 check('fillArgv keeps a set optional value', JSON.stringify(fillArgv(['x', '--model', '{model?}'], { model: 'Neon' })) === '["x","--model","Neon"]');
+check('fillArgv {model?sonnet}: fallback when empty, the given value otherwise', JSON.stringify(fillArgv(['x', '--model', '{model?sonnet}'], {})) === '["x","--model","sonnet"]' && JSON.stringify(fillArgv(['x', '--model', '{model?sonnet}'], { model: 'opus' })) === '["x","--model","opus"]');
 
 console.log('sessions (units):');
 const S = await import('../src/sessions.js');
