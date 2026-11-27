@@ -178,9 +178,14 @@ const askPid = loadSwarm(cId)?.tasks[0].attempts[0]?.pid;
 await sleep(2500);
 await cli(['swarm', 'cancel', cId]);
 for (let i = 0; i < 30 && loadSwarm(cId)?.status === 'running'; i++) await sleep(500);
-await sleep(1500);
-let alive = true; try { process.kill(askPid, 0); } catch { alive = false; }
-const agentsNow = (await adm('/state')).agents?.recent || [];
+// the agent manager notices a stop on its 2 s poll; give a slow CI machine time
+let alive = true, agentsNow = [];
+for (let i = 0; i < 30; i++) {
+  await sleep(500);
+  alive = true; try { process.kill(askPid, 0); } catch { alive = false; }
+  agentsNow = (await adm('/state')).agents?.recent || [];
+  if (!alive && !agentsNow.some((a) => a.status === 'running')) break;
+}
 check('cancel: swarm and its tasks cancelled', loadSwarm(cId)?.status === 'cancelled' && loadSwarm(cId).tasks.every((t) => t.status === 'cancelled'), JSON.stringify(loadSwarm(cId)?.tasks.map((t) => t.status)));
 check('cancel: the attempt process is gone and its agent stopped', !alive && !agentsNow.some((a) => a.status === 'running'), JSON.stringify(agentsNow.slice(0, 3)));
 
