@@ -1,0 +1,143 @@
+#!/bin/bash
+# gwmcp — run the tabswarm hub (MCP server + dashboard), its tunnel and the goal runner as launchd agents.
+#   gwmcp install     write the LaunchAgents and start them (server, tunnel, goal runner)
+#   gwmcp start|stop|restart [server|tunnel|goals]   (default: all)
+#   gwmcp status      launchd state, URLs, last Gemini contact
+#   gwmcp url         print the MCP URL to paste into Gemini
+#   gwmcp named <tunnel-uuid> <hostname>   switch to a fixed-URL named Cloudflare tunnel (own config in ~/.gemini-web-mcp)
+#   gwmcp quick       switch back to a quick tunnel (random trycloudflare.com URL)
+#   gwmcp login [gemini]   open the dedicated Chrome as a window to sign in once (then it goes back to headless)
+#   gwmcp browser [status [--check]|headless]   dedicated Chrome state / hide the window again
+#   gwmcp secrets     print the passcode / manual OAuth client (for Gemini setup)
+#   gwmcp logs        tail server + tunnel logs
+#   gwmcp uninstall   stop and remove the LaunchAgents (state in ~/.gemini-web-mcp is kept)
+set -euo pipefail
+REPO="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+# state dir: $WEBHUB_STATE_DIR, else the legacy ~/.gemini-web-mcp if it exists, else ~/.tabswarm
+if [ -n "${WEBHUB_STATE_DIR:-${GWM_STATE_DIR:-}}" ]; then STATE="${WEBHUB_STATE_DIR:-$GWM_STATE_DIR}"
+elif [ -d "$HOME/.gemini-web-mcp" ]; then STATE="$HOME/.gemini-web-mcp"; else STATE="$HOME/.tabswarm"; fi
+LA="$HOME/Library/LaunchAgents"
+# launchd label prefix: $WEBHUB_LAUNCHD_PREFIX, else $STATE/launchd_prefix, else io.github.tabswarm.hub
+PREFIX="${WEBHUB_LAUNCHD_PREFIX:-$(cat "$STATE/launchd_prefix" 2>/dev/null || echo io.github.tabswarm.hub)}"
+S_LABEL=$PREFIX
+T_LABEL=$PREFIX-tunnel
+G_LABEL=$PREFIX-goals
+UIDN="$(id -u)"
+NODE="${NODE:-$(command -v node || echo /opt/homebrew/bin/node)}"
+
+plist() { # label program-args... ; log file
+  local label="$1" log="$2"; shift 2
+  local args=""; for a in "$@"; do args+="    <string>$a</string>"$'\n'; done
+  cat <<P
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>$label</string>
+  <key>ProgramArguments</key><array>
+$args  </array>
+  <key>WorkingDirectory</key><string>$REPO</string>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string><key>HOME</key><string>$HOME</string></dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>$log</string>
+  <key>StandardErrorPath</key><string>$log</string>
+</dict></plist>
+P
+}
+
+which_labels() { case "${1:-all}" in server) echo $S_LABEL;; tunnel) echo $T_LABEL;; goals) echo $G_LABEL;; *) echo "$S_LABEL $T_LABEL $G_LABEL";; esac; }
+start() {
+  for l in $(which_labels "${1:-}"); do
+    for _ in 1 2 3 4 5 6 7 8 9 10; do # bootstrap fails while a previous bootout is still finishing
+      launchctl bootstrap "gui/$UIDN" "$LA/$l.plist" 2>/dev/null && break
+      launchctl print "gui/$UIDN/$l" >/dev/null 2>&1 && { launchctl kickstart "gui/$UIDN/$l" 2>/dev/null; break; }
+      sleep 1
+    done
+  done
+}
+stop() {
+  for l in $(which_labels "${1:-}"); do
+    launchctl bootout "gui/$UIDN/$l" 2>/dev/null || true
+    for _ in $(seq 1 25); do launchctl print "gui/$UIDN/$l" >/dev/null 2>&1 || break; sleep 1; done # the goal runner closes its tabs first
+  done
+}
+
+case "${1:-status}" in
+  install)
+    mkdir -p "$STATE/logs" "$LA"
+    [ -d "$REPO/node_modules" ] || (cd "$REPO" && npm ci --silent)
+    plist $S_LABEL "$STATE/logs/server.log" "$NODE" "$REPO/src/server.js" > "$LA/$S_LABEL.plist"
+    # launchd's bash may not read external volumes (macOS privacy), so run a copy from the state dir
+    mkdir -p "$STATE/bin" && cp "$REPO/bin/gwm-tunnel.sh" "$STATE/bin/gwm-tunnel.sh" && chmod 700 "$STATE/bin/gwm-tunnel.sh"
+    plist $T_LABEL "$STATE/logs/tunnel.log" /bin/bash "$STATE/bin/gwm-tunnel.sh" | sed "s#<string>$REPO</string>#<string>$STATE</string>#" > "$LA/$T_LABEL.plist"
+    # goal runner: resumes running goals (gemweb goal ...) after a restart
+    plist $G_LABEL "$STATE/logs/goals.log" "$NODE" "$REPO/bin/gemweb.mjs" goal daemon > "$LA/$G_LABEL.plist"
+    plutil -lint "$LA/$S_LABEL.plist" "$LA/$T_LABEL.plist" "$LA/$G_LABEL.plist" >/dev/null
+    mkdir -p "$HOME/.local/bin"
+    chmod +x "$REPO/bin/webhub.mjs" "$REPO/bin/gemweb.mjs" "$REPO/bin/gwmcp"
+    ln -sf "$REPO/bin/webhub.mjs" "$HOME/.local/bin/webhub"
+    rm -f "$HOME/.local/bin/gemweb" "$HOME/.local/bin/gwmcp"
+    stop all; start all
+    sleep 2; "$0" status ;;
+  uninstall) stop all; rm -f "$LA/$S_LABEL.plist" "$LA/$T_LABEL.plist" "$LA/$G_LABEL.plist"; echo "removed LaunchAgents (state kept in $STATE)" ;;
+  start) start "${2:-}" ;;
+  stop) stop "${2:-}" ;;
+  restart) stop "${2:-}"; sleep 1; start "${2:-}" ;;
+  url)
+    b="$(/usr/bin/python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('public_base_url',''))" "$STATE/config.json" 2>/dev/null || true)"
+    u="$(cat "$STATE/run/tunnel-url" 2>/dev/null || true)"
+    if [ -n "$b" ] && [ -f "$STATE/cloudflared.yml" ]; then echo "${b%/}/mcp"; [ -n "$u" ] || echo "(tunnel not connected right now)" >&2
+    elif [ -n "$u" ]; then echo "$u/mcp"; else echo "tunnel not up" >&2; exit 1; fi ;;
+  named)
+    id="${2:?usage: gwmcp named <tunnel-uuid> <hostname>}"; host="${3:?usage: gwmcp named <tunnel-uuid> <hostname>}"
+    cred="$HOME/.cloudflared/$id.json"; [ -f "$cred" ] || { echo "no credentials file $cred (cloudflared tunnel create ...)" >&2; exit 1; }
+    port="$(/usr/bin/python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('public_port',8781))" "$STATE/config.json" 2>/dev/null || echo 8781)"
+    umask 077
+    cat > "$STATE/cloudflared.yml" <<Y
+# gemini-web-mcp only (written by gwmcp named). Not ~/.cloudflared/config.yml.
+tunnel: $id
+credentials-file: $cred
+protocol: http2
+no-autoupdate: true
+ingress:
+  - hostname: $host
+    service: http://127.0.0.1:$port
+  - service: http_status:404
+Y
+    /usr/bin/python3 - "$STATE/config.json" "https://$host" <<'PY'
+import json,sys; p,b=sys.argv[1:]; c=json.load(open(p)); c['public_base_url']=b
+open(p,'w').write(json.dumps(c,indent=2)+'\n')
+PY
+    cp "$REPO/bin/gwm-tunnel.sh" "$STATE/bin/gwm-tunnel.sh"
+    "$0" restart; sleep 4; "$0" url ;;
+  quick)
+    rm -f "$STATE/cloudflared.yml"
+    /usr/bin/python3 - "$STATE/config.json" <<'PY'
+import json,sys; p=sys.argv[1]; c=json.load(open(p)); c.pop('public_base_url',None)
+open(p,'w').write(json.dumps(c,indent=2)+'\n')
+PY
+    cp "$REPO/bin/gwm-tunnel.sh" "$STATE/bin/gwm-tunnel.sh"
+    "$0" restart; sleep 8; "$0" url ;;
+  secrets)
+    /usr/bin/python3 - "$STATE/secrets.json" <<'PY'
+import json,sys; s=json.load(open(sys.argv[1]))
+print(f"passcode (OAuth consent page and /view login): {s['passcode']}")
+print(f"manual OAuth client id:     {s['manual_client_id']}")
+print(f"manual OAuth client secret: {s['manual_client_secret']}")
+print(f"static bearer (Inspector/scripts only): {s['static_bearer']}")
+PY
+    ;;
+  login) shift; exec "$NODE" "$REPO/bin/webhub.mjs" login "$@" ;;
+  browser) shift; exec "$NODE" "$REPO/bin/webhub.mjs" browser "$@" ;;
+  logs) tail -n 40 -F "$STATE/logs/server.log" "$STATE/logs/tunnel.log" "$STATE/logs/goals.log" ;;
+  status)
+    for l in $S_LABEL $T_LABEL $G_LABEL; do
+      if launchctl print "gui/$UIDN/$l" >/dev/null 2>&1; then
+        st="$(launchctl print "gui/$UIDN/$l" | awk -F'= ' '/^\tstate =/{print $2; exit}')"; pid="$(launchctl print "gui/$UIDN/$l" | awk -F'= ' '/^\tpid =/{print $2; exit}')"
+        echo "$l: ${st:-?} ${pid:+pid $pid}"
+      else echo "$l: not loaded"; fi
+    done
+    "$REPO/bin/gemweb.mjs" status 2>/dev/null || echo "server API not reachable" ;;
+  *) sed -n '2,12p' "$0"; exit 2 ;;
+esac

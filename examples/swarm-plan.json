@@ -1,0 +1,18 @@
+{
+  "title": "Review a design from three angles",
+  "goal": "Find the biggest risks in docs/design.md before we build it.",
+  "cwd": "~/projects/example",
+  "concurrency": 3,
+  "max_retries": 2,
+  "tasks": [
+    { "id": "risks", "title": "Failure modes", "backend": "web:gemini:Neon:high", "fallback": ["web:chatgpt"],
+      "prompt": "Read docs/design.md. List the ways this design can fail in production, ranked by impact. Quote the lines you rely on." },
+    { "id": "tests", "title": "Missing tests", "backend": "web:chatgpt", "fallback": ["web:gemini"],
+      "prompt": "Read docs/design.md and the tests/ folder. List behaviours the design promises that no test covers." },
+    { "id": "api", "title": "API review", "backend": "codex",
+      "prompt": "Read docs/design.md and src/api/. Point out API choices that will be hard to change later." },
+    { "id": "plan", "title": "Fix plan", "backend": "web:gemini:Carbon", "depends_on": ["risks", "tests", "api"],
+      "prompt": "Using the three reviews above, write a short, ordered plan of design changes. No code." }
+  ],
+  "synthesize": { "backend": "web:chatgpt", "prompt": "Merge into one review: top 5 risks, the fix plan, and open questions." }
+}

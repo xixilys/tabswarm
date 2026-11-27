@@ -1,0 +1,14 @@
+node_modules/
+desktop/node_modules/
+desktop/dist/
+*.log
+.DS_Store
+# runtime state, secrets, browser profiles and chat logs live in the state dir
+# (~/.tabswarm or $WEBHUB_STATE_DIR), never in the checkout
+secrets.json
+oauth.json
+.gemweb/
+*.profile/
+
+# notes kept next to the checkout, never committed
+*.local.md

@@ -1,0 +1,45 @@
+{
+  "name": "tabswarm",
+  "version": "0.3.0",
+  "description": "Drive ChatGPT and Gemini web chats from the terminal and your agents, give them local tools over MCP, and run swarms of web chats and local agents in parallel",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "smoke": "node scripts/smoke.mjs",
+    "test": "node scripts/smoke.mjs && node scripts/safety-test.mjs && node scripts/agent-test.mjs && node scripts/goal-test.mjs && node scripts/browser-test.mjs && node scripts/chatgpt-test.mjs && node scripts/hub-monitor-test.mjs && node scripts/multi-account-test.mjs && node scripts/login-test.mjs && node scripts/embedded-test.mjs && node scripts/swarm-test.mjs",
+    "test:swarm": "node scripts/swarm-test.mjs"
+  },
+  "license": "Apache-2.0",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "diff": "^9.0.0",
+    "playwright-core": "^1.65.1",
+    "zod": "^4.6.7"
+  },
+  "private": true,
+  "bin": {
+    "tabswarm": "bin/webhub.mjs",
+    "webhub": "bin/webhub.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "keywords": [
+    "mcp",
+    "chatgpt",
+    "gemini",
+    "browser-automation",
+    "multi-agent",
+    "swarm",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xixilys/tabswarm.git"
+  }
+}

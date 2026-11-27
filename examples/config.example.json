@@ -1,0 +1,40 @@
+{
+  "roots": [
+    { "name": "projects", "path": "~/projects" }
+  ],
+  "dangerous_policy": "auto",
+  "public_base_url": "",
+
+  "accounts": {
+    "default": "default",
+    "list": [
+      { "name": "default", "sites": ["gemini", "chatgpt"], "concurrency": 3, "daily_limit": 30 }
+    ]
+  },
+
+  "gateways": {
+    "default": { "type": "anthropic", "base_url": "http://127.0.0.1:4000", "api_key_env": "MY_GATEWAY_KEY", "max_tokens": 8192 }
+  },
+
+  "models": {
+    "neon": "web:gemini:Neon",
+    "carbon": "web:gemini:Carbon:high",
+    "reviewer": "web:chatgpt",
+    "planner": "gateway:my-planning-model"
+  },
+
+  "agents": {
+    "backends": ["claude", "codex", "web-chatgpt", "web-gemini", "gateway"],
+    "default_backend": "claude",
+    "max_running": 8,
+    "timeout_min": 30
+  },
+
+  "sessions": { "max_tool_calls": { "gemini": 80, "chatgpt": 80 }, "max_continue": 2 },
+  "swarm": { "concurrency": 4, "max_retries": 2, "max_active": 6, "workers": "web:chatgpt,web:gemini", "planner": "carbon" },
+
+  "gemweb": {
+    "daily_limit": 30,
+    "connector_name": "Local Projects"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "name": "web-ai-hub-desktop",
+  "version": "0.2.0",
+  "description": "Web AI Hub 桌面控制台（ChatGPT & Gemini 本地 MCP 与并发监控）",
+  "main": "main.cjs",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --mac dir --arm64",
+    "dist": "electron-builder --mac dmg --arm64"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "io.github.tabswarm.desktop",
+    "productName": "Web AI Hub",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "embedded.cjs",
+      "shell.html",
+      "shell-preload.cjs",
+      "splash.html",
+      "build/trayTemplate.png",
+      "build/trayTemplate@2x.png",
+      "build/icon.png"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
+      "target": [
+        { "target": "dmg", "arch": ["arm64"] },
+        { "target": "dir", "arch": ["arm64"] }
+      ],
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "Web AI Hub"
+    }
+  }
+}
