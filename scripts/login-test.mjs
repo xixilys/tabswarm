@@ -299,7 +299,7 @@ try {
   for (const f of [lockFile, lockOf(process.ppid), lockOf(2147483000)]) { try { fs.unlinkSync(f); } catch { /* none */ } }
   if (await loginUp()) { try { const b = await chromium.connectOverCDP(`http://127.0.0.1:${LOGIN}`); await (await b.newBrowserCDPSession()).send('Browser.close').catch(() => {}); } catch { /* ignore */ } }
   ctlSrv.close();
-  fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  { try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch (e) { console.log(`cleanup: ${e.message}`); } }
 }
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`);
 process.exit(fail ? 1 : 0);

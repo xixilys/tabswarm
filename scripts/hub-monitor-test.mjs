@@ -393,7 +393,7 @@ try {
   });
   await Promise.all([stopChild(server), stopChild(chromeProc), fakeGem.close().catch(() => {}), fakeGpt.close().catch(() => {})]);
   await sleep(200);
-  if (!process.argv.includes('--keep')) fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 });
+  if (!process.argv.includes('--keep')) { try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 }); } catch (e) { console.log(`cleanup: ${e.message}`); } }
   else console.log(`kept ${TMP}`);
 }
 

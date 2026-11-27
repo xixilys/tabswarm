@@ -120,7 +120,7 @@ new Safety({ safety: { keep_days: 7 } }, { resolve: () => ({}) }, { emit() {} })
 check('trash folders older than 7 days are removed', !fs.existsSync(path.join(STATE, 'trash', '2000-01-01')));
 
 await client.close(); server.kill('SIGTERM');
-if (!process.argv.includes('--keep')) fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 }); else console.log(`kept ${TMP}`);
+if (!process.argv.includes('--keep')) { try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 }); } catch (e) { console.log(`cleanup: ${e.message}`); } } else console.log(`kept ${TMP}`);
 if (fail) console.log(serverLog.split('\n').slice(-15).join('\n'));
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`);
 process.exit(fail ? 1 : 0);

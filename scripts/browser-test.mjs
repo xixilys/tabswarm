@@ -209,8 +209,10 @@ const evs = await fetch(`http://127.0.0.1:${ADM}/api/events?limit=5000`).then((x
 check('refusals and the limit are on the timeline', evs.some((e) => e.type === 'web.limit') && evs.some((e) => e.type === 'task.refused' && e.kind === 'daily-cap'));
 
 // ---------------- cleanup ----------------
+const exited = (p) => new Promise((r) => { if (p.exitCode !== null || p.signalCode) return r(); p.once('exit', r); setTimeout(r, 5000); });
 server.kill('SIGTERM'); chromeProc.kill('SIGTERM'); await fake.close();
-if (!process.argv.includes('--keep')) fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 }); else console.log(`kept ${TMP}`);
+await Promise.all([exited(server), exited(chromeProc)]);
+if (!process.argv.includes('--keep')) { try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 }); } catch (e) { console.log(`cleanup: ${e.message}`); } } else console.log(`kept ${TMP}`);
 if (fail) console.log(serverLog.split('\n').slice(-15).join('\n'));
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`);
 process.exit(fail ? 1 : 0);

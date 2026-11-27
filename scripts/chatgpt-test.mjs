@@ -165,7 +165,7 @@ check('page-reply answer and refusals on the timeline', evs.some((e) => e.type =
 const exited = (p) => new Promise((r) => { if (p.exitCode !== null || p.signalCode) return r(); p.once('exit', r); setTimeout(r, 5000); });
 server.kill('SIGTERM'); chromeProc.kill('SIGTERM'); await fake.close();
 await Promise.all([exited(server), exited(chromeProc)]);
-if (!process.argv.includes('--keep')) fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 }); else console.log(`kept ${TMP}`);
+if (!process.argv.includes('--keep')) { try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 6, retryDelay: 200 }); } catch (e) { console.log(`cleanup: ${e.message}`); } } else console.log(`kept ${TMP}`);
 if (fail) console.log(serverLog.split('\n').slice(-15).join('\n'));
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`);
 process.exit(fail ? 1 : 0);

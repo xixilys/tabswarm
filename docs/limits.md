@@ -11,6 +11,7 @@ with every model and UI release.
 |---|---|---|
 | Gemini web, **Chat** mode (early 2026-11) | 8–9 tool calls per turn, at most 9 seen; one 13-call case spread over two turns | The model **stopped calling tools on its own** and wrote a summary. No error was shown, and some summaries claimed things the tools never did. |
 | Gemini web, **Task** mode (the default here) | 109 tool calls in **one** conversation and one turn (a 3D web game built with 7 local agents), plus several 25–53-call runs | No error. It ended normally with `report(final)`. |
+| Gemini web, **Task** mode, dedicated probe (2026-11-27) | Asked for 150 `list_roots` calls in one turn: it made **113 + 5 `report` = 118 tool calls**, then stopped | Gemini's runtime gives one turn a budget of **120 model steps**; every tool call uses one. Near the end the model sees `Note: You have 3 model calls remaining (call 118 of 120). Plan your remaining work accordingly.` It used the last steps for `report(final)` and its answer. Nothing was shown on the page: no error, no banner. |
 | ChatGPT web (Thinking levels) | Up to 34 tool calls in one conversation | No error. It ended normally with `report(final)`. |
 
 So in practice:
@@ -18,8 +19,11 @@ So in practice:
 * **There is no hard error.** The cap shows up as **silent stopping**. The model ends its turn
   early (with a summary and no `report(final)`, or a `report(progress)`), and may say it is done
   when it is not. Do not trust the closing message; check `webhub trace <task_id>` and the files.
-* **Task mode raises the ceiling a lot.** The driver always switches Gemini to Task mode.
-* The cap seems to apply per turn, not just per chat. A follow-up message in the same chat often
+* **Gemini Task mode: about 117 tool calls per turn.** The budget is 120 model steps per turn,
+  and the model is only warned 3 steps before the end. A model that ignores the warning just
+  stops, with no final report. Chat mode stops far earlier (8–9). The driver always switches
+  Gemini to Task mode.
+* The cap applies per turn, not per chat. A follow-up message in the same chat often
   continues the work, but long chats get slower and less reliable.
 
 ## What tabswarm does about it
@@ -27,7 +31,8 @@ So in practice:
 1. **It counts calls per conversation.** Every MCP call carries the task id. `ask --session NAME`
    adds them up per chat (`webhub session list` shows "calls in current chat").
 2. **It rolls over before the cap.** When the current chat of a session has used
-   `sessions.max_tool_calls.<site>` calls (default 80), the next turn opens a **new chat**. Its
+   `sessions.max_tool_calls.<site>` calls (default 80: under the ~117-call turn budget, and long
+   chats get slow anyway), the next turn opens a **new chat**. Its
    first message is a handoff: the original request, the last turns' summaries, and a "check
    the disk before redoing anything" rule.
 3. **It continues a stalled task.** If a web task stops without `report(final)` after using at

@@ -216,7 +216,7 @@ try {
   if (app && app.exitCode === null) { app.kill('SIGTERM'); await Promise.race([new Promise((r) => app.once('exit', r)), sleep(5000)]); }
   if (server && server.exitCode === null) server.kill('SIGTERM');
   await fake.close().catch(() => {});
-  if (!process.argv.includes('--keep')) fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  if (!process.argv.includes('--keep')) { try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch (e) { console.log(`cleanup: ${e.message}`); } }
 }
 console.log(`\n${fail ? '\x1b[31m' : '\x1b[32m'}${pass} passed, ${fail} failed\x1b[0m`);
 process.exit(fail ? 1 : 0);
