@@ -157,8 +157,16 @@ const s3 = fake.state.sends.at(-1) || {};
 check('--chat follows up in same /c/<id> (turn 1) with requested model', r.code === 0 && s3.chat === s1.chat && s3.turn === 1 && s3.model === 'GPT-6.2 Instant' && fs.readFileSync(path.join(ROOT, 'three.txt'), 'utf8') === 'hello from three.txt\n', JSON.stringify({ code: r.code, s3, out: r.out.slice(0, 200) }));
 
 console.log('daily cap (4 per site in this test):');
+// Whether the usage-limit task above counts depends on timing (the notice can appear before or
+// after the send). Fill the cap with plain tasks, then the next one must be refused.
+let used = 0, sentHere = 0;
+for (;;) {
+  used = Number(/chatgpt (\d+)\/4 tasks sent/.exec((await gemweb(['status'])).out)?.[1] ?? -1);
+  if (used >= 4 || sentHere >= 2) break;
+  await gemweb(['--site', 'chatgpt', '--allow-pro', '--timeout', '60', 'hello']); sentHere++;
+}
 r = await gemweb(['--site', 'chatgpt', '--timeout', '60', 'hello']);
-check('5th ChatGPT task of the day refused: BLOCKED: daily-cap', r.code === 3 && /BLOCKED: daily-cap\|.*ChatGPT today/.test(r.out), `${r.code} ${r.out} ${r.err}`);
+check('task beyond the daily cap refused: BLOCKED: daily-cap', used === 4 && r.code === 3 && /BLOCKED: daily-cap\|.*ChatGPT today/.test(r.out), `used ${used} (filled ${sentHere}); ${r.code} ${r.out} ${r.err}`);
 const evs = await fetch(`http://127.0.0.1:${ADM}/api/events?limit=5000`).then((x) => x.json());
 check('page-reply answer and refusals on the timeline', evs.some((e) => e.type === 'report' && e.source === 'page') && evs.some((e) => e.type === 'task.refused' && e.site === 'chatgpt'));
 
