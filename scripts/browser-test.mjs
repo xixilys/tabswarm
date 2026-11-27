@@ -101,6 +101,8 @@ const gemweb = (args) => new Promise((resolve) => {
   ch.on('close', (code) => resolve({ code, out, err, id: /TASK_ID=(\S+)/.exec(err)?.[1] }));
 });
 const fakePages = async () => (await fetch(`${CDP}/json/list`).then((r) => r.json()).catch(() => [])).filter((t) => t.type === 'page' && t.url.startsWith(fake.url.replace(/\/app.*/, '')));
+// a closed tab can stay in /json/list for a moment on a slow machine
+const noFakePages = async () => { for (let i = 0; i < 20; i++) { if ((await fakePages()).length === 0) return true; await sleep(250); } return false; };
 const registry = () => { try { return fs.readdirSync(path.join(process.env.GWM_STATE_DIR, 'run', 'tabs')); } catch { return []; } };
 const task = (name) => `Write ${name}.\nMOCK write ${ROOT}/${name}\nhello from ${name}\nMOCK end\nMOCK run ${ROOT} :: cat ${name}`;
 
@@ -112,7 +114,7 @@ check('ran in the dedicated Chrome (driver.browser = cdp, fast path)', t.driver?
 check('app selected with "@", Task mode on', fake.state.sends[0]?.mention === true && fake.state.sends[0]?.task_mode === true, JSON.stringify(fake.state.sends[0] || {}).slice(0, 200));
 check('tool prompt answered with Always allow', fake.state.confirms[0] === 'Always allow', JSON.stringify(fake.state.confirms));
 check('file written through MCP', fs.existsSync(path.join(ROOT, 'one.txt')));
-check('task tab closed at the end', (await fakePages()).length === 0, JSON.stringify(await fakePages()));
+check('task tab closed at the end', await noFakePages(), JSON.stringify(await fakePages()));
 check('tab registry cleaned up', registry().length === 0, registry());
 check('task counted as sent today', !!t.sent_at);
 
@@ -156,7 +158,7 @@ console.log('headless page looks like normal Chrome:');
   const ua = await p.evaluate(() => navigator.userAgent + ' ' + JSON.stringify(navigator.userAgentData?.brands || []));
   check('navigator.userAgent / brands have no "Headless"', !/Headless/.test(ua), ua);
   await d.closeTaskTabs(); await d.disconnect();
-  check('probe tab closed', (await fakePages()).length === 0);
+  check('probe tab closed', await noFakePages(), JSON.stringify(await fakePages()));
 }
 
 console.log('crashed gemweb leaves no tab behind:');
@@ -170,7 +172,7 @@ const d = await Dedicated.connect(loadConfig(), 'orphan_t'); const p = await d.n
   check('orphan tab exists after the kill', (await fakePages()).length === 1, JSON.stringify(await fakePages()) + ' ' + ocErr.slice(-400));
   const { Dedicated } = await import('../src/browser.js');
   const d = await Dedicated.connect(cfgRef, 'sweeper'); await d.disconnect();
-  check('next gemweb run closes it', (await fakePages()).length === 0, JSON.stringify(await fakePages()));
+  check('next gemweb run closes it', await noFakePages(), JSON.stringify(await fakePages()));
   check('registry entry removed', !registry().includes('orphan_t.json'), registry());
 }
 
@@ -178,14 +180,14 @@ console.log('not signed in:');
 fake.state.mode = 'signedout';
 r = await gemweb(['--no-operator', '--timeout', '60', task('two.txt')]);
 check('BLOCKED: auth, pointing at webhub login gemini (exit 3)', r.code === 3 && /BLOCKED: auth\|.*webhub login gemini/.test(r.out), `${r.code} ${r.out} ${r.err}`);
-check('no tab left', (await fakePages()).length === 0);
+check('no tab left', await noFakePages(), JSON.stringify(await fakePages()));
 check('owner\'s Chrome not used as a fallback', !/Browser MCP/.test(r.err), r.err);
 
 console.log('usage-limit notice stops new tasks:');
 fake.state.mode = 'limit';
 r = await gemweb(['--no-operator', '--timeout', '60', task('three.txt')]);
 check('BLOCKED: rate-limit with the page notice (exit 3)', r.code === 3 && /BLOCKED: rate-limit\|.*reached your limit/.test(r.out), `${r.code} ${r.out} ${r.err}`);
-check('no tab left', (await fakePages()).length === 0);
+check('no tab left', await noFakePages(), JSON.stringify(await fakePages()));
 fake.state.mode = 'ok';
 const sendsBefore = fake.state.sends.length;
 r = await gemweb(['--no-operator', '--timeout', '60', task('four.txt')]);
