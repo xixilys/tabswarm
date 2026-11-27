@@ -91,7 +91,7 @@ flowchart LR
 ## Quick start
 
 Requirements: macOS (the command sandbox uses `sandbox-exec`; the rest is portable Node),
-Node.js ≥ 20, Google Chrome, and a ChatGPT and/or Gemini account. For tool use you also need the
+Node.js ≥ 20, Google Chrome, [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`, used by the search tool), and a ChatGPT and/or Gemini account. For tool use you also need the
 connector setup in step 4.
 
 ```bash

@@ -14,6 +14,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - run: brew install ripgrep
       - run: npm ci
       - name: syntax check
         run: for f in src/*.js bin/*.mjs scripts/*.mjs; do node --check "$f"; done

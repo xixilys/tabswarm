@@ -259,6 +259,7 @@ export function registerTools(server, ctx, reqInfo) {
       args = ['-n', '--no-heading', '--color', 'never', '-M', '300', '--max-columns-preview', ...(a.regex ? [] : ['-F']), ...(a.case_sensitive ? ['-s'] : ['-i']), ...(a.glob ? ['-g', a.glob] : []), ...denyArgs, '--', a.query, abs];
     }
     const r = await run('rg', args, { timeoutMs: 30000 });
+    if (r.code === -1 && /ENOENT/.test(r.err)) return { result: errText('search needs ripgrep (rg) on the hub machine: brew install ripgrep') };
     if (r.code === 2 && !r.out) return { result: errText(`search error: ${r.err.trim()}`) };
     const lines = r.out.split('\n').filter(Boolean);
     const shown = lines.slice(0, max);
